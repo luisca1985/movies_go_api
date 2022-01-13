@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type taskList struct {
 	tasks []*task
@@ -53,9 +51,27 @@ func main() {
 			t1, t2,
 		},
 	}
-	fmt.Println(list.tasks[0])
 	list.addToList(t3)
-	fmt.Println(len(list.tasks))
-	list.removeFromList(1)
-	fmt.Println(len(list.tasks))
+
+	// for i := 0; i < len(list.tasks); i++ {
+	// 	fmt.Println("Index", i, "name", list.tasks[i].name)
+	// }
+
+	// for index, task := range list.tasks {
+	// 	fmt.Println("Index", index, "name", task.name)
+	// }
+
+	for i := 0; i < 10; i++ {
+		if i == 5 {
+			break
+		}
+		fmt.Println(i)
+	}
+
+	for i := 0; i < 10; i++ {
+		if i == 5 {
+			continue
+		}
+		fmt.Println(i)
+	}
 }
