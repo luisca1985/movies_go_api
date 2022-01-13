@@ -25,3 +25,23 @@ You are free to make some decisions about the functionality on your own, there a
 ground rules. After successfully completing the code execution, please upload the code on
 github and send us the link. Also share postman collection with all the API urls so its easy to
 validate. Thanks!
+
+# Movies API
+
+## API Options
+### Search by id
+```http
+http:localhost/api/movies/:id
+```
+### Released between range
+```http
+http:localhost/api/movies?released_after=<MIN_DATE_VALUE>&released_before=<MAX_DATE_VALUE>
+```
+### Rating between range
+```http
+http:localhost/api/movies?rating_higher_than=<MIN_RATING_VALUE>&rating_lower_than=<MAX_RATING_VALUE>
+```
+### Genres
+```http
+http:localhost/api/movies?genre=<GENRE_VALUE>
+```
