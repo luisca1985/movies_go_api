@@ -8,15 +8,47 @@ import (
 	"strings"
 )
 
-func main() {
+type calc struct {
+}
+
+func (calc) operate(input string, operator string) int {
+	cleanInput := strings.Split(input, operator)
+	operator1 := parse(cleanInput[0])
+	operator2 := parse(cleanInput[1])
+	switch operator {
+	case "+":
+		fmt.Println(operator1 + operator2)
+		return operator1 + operator2
+	case "-":
+		fmt.Println(operator1 - operator2)
+		return operator1 - operator2
+	case "*":
+		fmt.Println(operator1 * operator2)
+		return operator1 * operator2
+	case "/":
+		fmt.Println(operator1 / operator2)
+		return operator1 / operator2
+	default:
+		fmt.Println(operator, "is not valid.")
+		return 0
+	}
+}
+
+func parse(input string) int {
+	operator, _ := strconv.Atoi(input)
+	return operator
+}
+
+func readInput() string {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	operation := scanner.Text()
-	fmt.Println(operation)
-	values := strings.Split(operation, "+")
-	fmt.Println(values)
-	fmt.Println(values[0] + values[1])
-	operator1, _ := strconv.Atoi(values[0])
-	operator2, _ := strconv.Atoi(values[1])
-	fmt.Println(operator1 + operator2)
+	return scanner.Text()
+}
+
+func main() {
+	input := readInput()
+	operator := readInput()
+	c := calc{}
+	fmt.Println(c.operate(input, operator))
+
 }
