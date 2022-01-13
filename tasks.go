@@ -14,6 +14,25 @@ func (t *taskList) removeFromList(index int) {
 	t.tasks = append(t.tasks[:index], t.tasks[index+1:]...)
 }
 
+func (t *taskList) printList() {
+	for _, task := range t.tasks {
+		fmt.Println("Name", task.name)
+		fmt.Println("Description", task.description)
+	}
+
+}
+
+func (t *taskList) printListCompleted() {
+	for _, task := range t.tasks {
+		if task.completed == true {
+			fmt.Println("Name", task.name)
+			fmt.Println("Description", task.description)
+
+		}
+	}
+
+}
+
 type task struct {
 	name        string
 	description string
@@ -52,26 +71,8 @@ func main() {
 		},
 	}
 	list.addToList(t3)
-
-	// for i := 0; i < len(list.tasks); i++ {
-	// 	fmt.Println("Index", i, "name", list.tasks[i].name)
-	// }
-
-	// for index, task := range list.tasks {
-	// 	fmt.Println("Index", index, "name", task.name)
-	// }
-
-	for i := 0; i < 10; i++ {
-		if i == 5 {
-			break
-		}
-		fmt.Println(i)
-	}
-
-	for i := 0; i < 10; i++ {
-		if i == 5 {
-			continue
-		}
-		fmt.Println(i)
-	}
+	list.printList()
+	list.tasks[0].markAsCompleted()
+	fmt.Println("Tasks completed")
+	list.printListCompleted()
 }
