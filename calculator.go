@@ -13,7 +13,8 @@ func main() {
 	scanner.Scan()
 	operation := scanner.Text()
 	fmt.Println(operation)
-	values := strings.Split(operation, "+")
+	opearator := "-"
+	values := strings.Split(operation, opearator)
 	fmt.Println(values)
 	fmt.Println(values[0] + values[1])
 	operator1, err1 := strconv.Atoi(values[0])
@@ -24,4 +25,16 @@ func main() {
 	}
 	operator2, _ := strconv.Atoi(values[1])
 	fmt.Println(operator1 + operator2)
+	switch opearator {
+	case "+":
+		fmt.Println(operator1 + operator2)
+	case "-":
+		fmt.Println(operator1 - operator2)
+	case "*":
+		fmt.Println(operator1 * operator2)
+	case "/":
+		fmt.Println(operator1 / operator2)
+	default:
+		fmt.Println(opearator, "is not valid.")
+	}
 }
