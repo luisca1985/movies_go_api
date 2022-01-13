@@ -75,4 +75,32 @@ func main() {
 	list.tasks[0].markAsCompleted()
 	fmt.Println("Tasks completed")
 	list.printListCompleted()
+
+	mapTasks := make(map[string]*taskList)
+
+	mapTasks["Nestor"] = list
+
+	t4 := &task{
+		name:        "Complete Java course",
+		description: "Complete Java course this week",
+	}
+	t5 := &task{
+		name:        "Complete C# course",
+		description: "Complete C# course this week",
+	}
+
+	list2 := &taskList{
+		tasks: []*task{
+			t4, t5,
+		},
+	}
+
+	mapTasks["Ricardo"] = list2
+
+	fmt.Println("Tareas de Nestor")
+	mapTasks["Nestor"].printList()
+
+	fmt.Println("Tareas de Ricardo")
+	mapTasks["Ricardo"].printList()
+
 }
