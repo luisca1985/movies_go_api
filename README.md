@@ -27,6 +27,29 @@ github and send us the link. Also share postman collection with all the API urls
 validate. Thanks!
 
 # Movies API
+## Database
+### Create a database
+```sql
+mysql> create database movies_db;
+```
+### Change to the database
+```sql
+mysql> use movies_db;
+```
+### Create an album table with values
+```sql
+mysql> source /movies_go_api/create-tables.sql
+```
+
+### User and Password
+From the command prompt, set the `DBUSER` and `DBPASS` environment variables for use by the Go program.
+
+#### On Linux or Mac
+```bash
+$ export DBUSER=username
+```
+```bash
+$ export DBPASS=password
 
 ## API Options
 ### Search by id
