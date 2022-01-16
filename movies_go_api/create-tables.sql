@@ -6,18 +6,19 @@ CREATE TABLE movie (
   title VARCHAR(128) NOT NULL,
   released_year INT NOT NULL,
   rating DECIMAL(2, 1) NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (id)
 );
 CREATE TABLE genre (
   id INT AUTO_INCREMENT NOT NULL,
   genre VARCHAR(128) NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (id)
 );
 CREATE TABLE movie_genre (
-  id INT AUTO_INCREMENT NOT NULL,
+  -- id INT AUTO_INCREMENT NOT NULL,
   movie_id INT NOT NULL,
   genre_id INT NOT NULL,
-  PRIMARY KEY (`id`),
+  -- PRIMARY KEY (`id`),
+  PRIMARY KEY (movie_id,genre_id),
   CONSTRAINT moviegenre_movie FOREIGN KEY (movie_id) REFERENCES movie (id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT moviegenre_genre FOREIGN KEY (genre_id) REFERENCES genre (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
