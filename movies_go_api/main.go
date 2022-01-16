@@ -50,21 +50,28 @@ func main() {
 	fmt.Printf("Movies found: %v\n", movies)
 }
 
-// albumsByArtist queries for albums that have the specified artist name.
 func moviesByGenre(genre string) ([]Movie, error) {
+	movies, err := listMoviesQuery("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
+	return movies, err
+}
+
+// albumsByArtist queries for albums that have the specified artist name.
+func listMoviesQuery(query string, args ...interface{}) ([]Movie, error) {
 	// An albums slice to hold data from returned rows.
 	var movies []Movie
 
-	mov_rows, err := db.Query("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
+	filterCriteria := "Criteria..."
+
+	mov_rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("moviesByGenre %q: %v", genre, err)
+		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
 	}
 	defer mov_rows.Close()
 	// Loop through mov_rows, using Scan to assign column data to struct fields.
 	for mov_rows.Next() {
 		var mov Movie
 		if err := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating); err != nil {
-			return nil, fmt.Errorf("moviesByGenre %q: %v", genre, err)
+			return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
 		}
 
 		gen_rows, err := db.Query("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", mov.ID)
@@ -84,7 +91,7 @@ func moviesByGenre(genre string) ([]Movie, error) {
 		movies = append(movies, mov)
 	}
 	if err := mov_rows.Err(); err != nil {
-		return nil, fmt.Errorf("moviesByGenre %q: %v", genre, err)
+		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
 	}
 	return movies, nil
 }
