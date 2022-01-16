@@ -11,6 +11,13 @@ import (
 
 var db *sql.DB
 
+type Album struct {
+	ID     int64
+	Title  string
+	Artist string
+	Price  float32
+}
+
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
