@@ -24,40 +24,54 @@ type Movie struct {
 	Genres       []string `json:"genres"`
 }
 
+type Genre struct {
+	ID    int    `json:"id"`
+	Genre string `json:"genres"`
+}
+
 var db *sql.DB
 
-func listGenresByQuery(query string, args ...interface{}) ([]string, error) {
-	var genres []string
-	gen_rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("Genres: %v", err)
+func listGenresByQuery(query string, args ...interface{}) ([]Genre, error) {
+	var genres []Genre
+	gen_rows, err_query := db.Query(query, args...)
+	if err_query != nil {
+		return nil, fmt.Errorf("listGenresByQuery: Genres Query -> %w", err_query)
 	}
 	defer gen_rows.Close()
 
 	for gen_rows.Next() {
-		var genre string
-		err := gen_rows.Scan(&genre)
-		if err != nil {
-			return nil, fmt.Errorf("Genre %q: %v", genre, err)
+		var genre Genre
+		err_scan := gen_rows.Scan(&genre.ID, &genre.Genre)
+		if err_scan != nil {
+			return nil, fmt.Errorf("listGenresByQuery: Genre %q Scan -> %w", genre.Genre, err_scan)
 		}
 		genres = append(genres, genre)
 	}
 	return genres, nil
 }
 
-func genresByMovieId(id int) ([]string, error) {
-	genres, err := listGenresByQuery("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", id)
-	return genres, err
+func genresByMovieId(id int) ([]Genre, error) {
+	genres, err := listGenresByQuery("SELECT genre.* FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", id)
+	if err != nil {
+		return nil, fmt.Errorf("genresByMovieId -> %v", err)
+	}
+	return genres, nil
 }
 
-func allGenres() ([]string, error) {
-	genres, err := listGenresByQuery("SELECT genre FROM genre")
-	return genres, err
+func allGenres() ([]Genre, error) {
+	genres, err := listGenresByQuery("SELECT * FROM genre")
+	if err != nil {
+		return nil, fmt.Errorf("allGenres -> %v", err)
+	}
+	return genres, nil
 }
 
-func findGenres(genres []string) ([]string, error) {
-	query := "SELECT genre FROM genre WHERE genre IN (?" + strings.Repeat(",?", len(genres)-1) + ")"
+func findGenres(genres []Genre) ([]Genre, error) {
+	query := "SELECT * FROM genre WHERE genre IN (?" + strings.Repeat(",?", len(genres)-1) + ")"
 	genres_in_db, err := listGenresByQuery(query, genres)
+	if err != nil {
+		return nil, fmt.Errorf("findGenres -> %v", err)
+	}
 	return genres_in_db, err
 }
 
@@ -69,44 +83,56 @@ func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
 
 	mov_rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listMoviesByQuery: Movies Query -> %v", err)
 	}
 	defer mov_rows.Close()
 	// Loop through mov_rows, using Scan to assign column data to struct fields.
 	for mov_rows.Next() {
 		var mov Movie
-		if err := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating); err != nil {
-			return nil, err
+		err_scan := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating)
+		if err_scan != nil {
+			return nil, fmt.Errorf("listMoviesByQuery: Movie %q Scan -> %v", mov.Title, err_scan)
 		}
 
-		var err_gen error
-		mov.Genres, err_gen = genresByMovieId(mov.ID)
+		genres, err_gen := genresByMovieId(mov.ID)
+		for _, genre := range genres {
+			mov.Genres = append(mov.Genres, genre.Genre)
+		}
 		if err_gen != nil {
-			return nil, err_gen
+			return nil, fmt.Errorf("listMoviesByQuery -> %v", err_gen)
 		}
 
 		movies = append(movies, mov)
 	}
-	err = mov_rows.Err()
+	err_err := mov_rows.Err()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listMoviesByQuery: Err -> %v", err_err)
 	}
 	return movies, nil
 }
 
 func allMovies() ([]Movie, error) {
 	movies, err := listMoviesByQuery("SELECT * FROM movie")
-	return movies, err
+	if err != nil {
+		return nil, fmt.Errorf("allMovies -> %v", err)
+	}
+	return movies, nil
 }
 
 func movieById(id int) ([]Movie, error) {
 	movies, err := listMoviesByQuery("SELECT movie * FROM movie WHERE id = ?", id)
-	return movies, err
+	if err != nil {
+		return movies, fmt.Errorf("movieById -> %v", err)
+	}
+	return movies, nil
 }
 
 func moviesByGenre(genre string) ([]Movie, error) {
 	movies, err := listMoviesByQuery("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
-	return movies, err
+	if err != nil {
+		return movies, fmt.Errorf("moviesByGenre -> %v", err)
+	}
+	return movies, nil
 }
 
 // getAlbumByID locates the album whose ID value matches the id
@@ -129,12 +155,12 @@ func getMovies(c *gin.Context) {
 	if len(genre) > 0 {
 		movies, err = moviesByGenre(genre)
 		if err != nil {
-			log.Fatal(fmt.Errorf("Movies by Genre: %v", err))
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
 		}
 	} else {
 		movies, err = allMovies()
 		if err != nil {
-			log.Fatal(fmt.Errorf("All Movies: %v", err))
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
 		}
 	}
 	// Loop over the list of albums, looking for
