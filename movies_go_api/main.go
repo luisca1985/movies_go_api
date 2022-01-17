@@ -25,32 +25,56 @@ type Movie struct {
 
 var db *sql.DB
 
-func main() {
-	// Capture connection properties.
-	cfg := mysql.Config{
-		User:   os.Getenv("DBUSER"),
-		Passwd: os.Getenv("DBPASS"),
-		Net:    "tcp",
-		Addr:   "127.0.0.1:3306",
-		DBName: "movies_db",
-	}
-	// Get a database handle.
-	var err error
-	db, err = sql.Open("mysql", cfg.FormatDSN())
+// albumsByArtist queries for albums that have the specified artist name.
+func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
+	// An albums slice to hold data from returned rows.
+
+	var movies []Movie
+
+	filterCriteria := "Criteria..."
+
+	mov_rows, err := db.Query(query, args...)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
 	}
+	defer mov_rows.Close()
+	// Loop through mov_rows, using Scan to assign column data to struct fields.
+	for mov_rows.Next() {
+		var mov Movie
+		if err := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating); err != nil {
+			return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+		}
 
-	pingErr := db.Ping()
-	if pingErr != nil {
-		log.Fatal(pingErr)
+		gen_rows, err := db.Query("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", mov.ID)
+		if err != nil {
+			return nil, fmt.Errorf("movie %q: %v", mov.ID, err)
+		}
+		defer gen_rows.Close()
+
+		for gen_rows.Next() {
+			var genr string
+			if err := gen_rows.Scan(&genr); err != nil {
+				return nil, fmt.Errorf("Genre %q: %v", genr, err)
+			}
+			mov.Genres = append(mov.Genres, genr)
+		}
+
+		movies = append(movies, mov)
 	}
-	fmt.Println("Connected!")
+	if err := mov_rows.Err(); err != nil {
+		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+	}
+	return movies, nil
+}
 
-	router := gin.Default()
-	router.GET("/movies", getMovies)
-	router.GET("/movies/:id", getMovies)
-	router.Run("localhost:8080")
+func allMovies() ([]Movie, error) {
+	movies, err := listMoviesByQuery("SELECT * FROM movie")
+	return movies, err
+}
+
+func moviesByGenre(genre string) ([]Movie, error) {
+	movies, err := listMoviesByQuery("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
+	return movies, err
 }
 
 // getAlbumByID locates the album whose ID value matches the id
@@ -98,54 +122,30 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
 }
 
-func allMovies() ([]Movie, error) {
-	movies, err := listMoviesByQuery("SELECT * FROM movie")
-	return movies, err
-}
-
-func moviesByGenre(genre string) ([]Movie, error) {
-	movies, err := listMoviesByQuery("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
-	return movies, err
-}
-
-// albumsByArtist queries for albums that have the specified artist name.
-func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
-	// An albums slice to hold data from returned rows.
-
-	var movies []Movie
-
-	filterCriteria := "Criteria..."
-
-	mov_rows, err := db.Query(query, args...)
+func main() {
+	// Capture connection properties.
+	cfg := mysql.Config{
+		User:   os.Getenv("DBUSER"),
+		Passwd: os.Getenv("DBPASS"),
+		Net:    "tcp",
+		Addr:   "127.0.0.1:3306",
+		DBName: "movies_db",
+	}
+	// Get a database handle.
+	var err error
+	db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+		log.Fatal(err)
 	}
-	defer mov_rows.Close()
-	// Loop through mov_rows, using Scan to assign column data to struct fields.
-	for mov_rows.Next() {
-		var mov Movie
-		if err := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating); err != nil {
-			return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
-		}
 
-		gen_rows, err := db.Query("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", mov.ID)
-		if err != nil {
-			return nil, fmt.Errorf("movie %q: %v", mov.ID, err)
-		}
-		defer gen_rows.Close()
-
-		for gen_rows.Next() {
-			var genr string
-			if err := gen_rows.Scan(&genr); err != nil {
-				return nil, fmt.Errorf("Genre %q: %v", genr, err)
-			}
-			mov.Genres = append(mov.Genres, genr)
-		}
-
-		movies = append(movies, mov)
+	pingErr := db.Ping()
+	if pingErr != nil {
+		log.Fatal(pingErr)
 	}
-	if err := mov_rows.Err(); err != nil {
-		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
-	}
-	return movies, nil
+	fmt.Println("Connected!")
+
+	router := gin.Default()
+	router.GET("/movies", getMovies)
+	router.GET("/movies/:id", getMovies)
+	router.Run("localhost:8080")
 }
