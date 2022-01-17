@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"net/http"
 
@@ -25,50 +26,81 @@ type Movie struct {
 
 var db *sql.DB
 
+func listGenresByQuery(query string, args ...interface{}) ([]string, error) {
+	var genres []string
+	gen_rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("Genres: %v", err)
+	}
+	defer gen_rows.Close()
+
+	for gen_rows.Next() {
+		var genre string
+		err := gen_rows.Scan(&genre)
+		if err != nil {
+			return nil, fmt.Errorf("Genre %q: %v", genre, err)
+		}
+		genres = append(genres, genre)
+	}
+	return genres, nil
+}
+
+func genresByMovieId(id int) ([]string, error) {
+	genres, err := listGenresByQuery("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", id)
+	return genres, err
+}
+
+func allGenres() ([]string, error) {
+	genres, err := listGenresByQuery("SELECT genre FROM genre")
+	return genres, err
+}
+
+func findGenres(genres []string) ([]string, error) {
+	query := "SELECT genre FROM genre WHERE genre IN (?" + strings.Repeat(",?", len(genres)-1) + ")"
+	genres_in_db, err := listGenresByQuery(query, genres)
+	return genres_in_db, err
+}
+
 // albumsByArtist queries for albums that have the specified artist name.
 func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
 	// An albums slice to hold data from returned rows.
 
 	var movies []Movie
 
-	filterCriteria := "Criteria..."
-
 	mov_rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+		return nil, err
 	}
 	defer mov_rows.Close()
 	// Loop through mov_rows, using Scan to assign column data to struct fields.
 	for mov_rows.Next() {
 		var mov Movie
 		if err := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating); err != nil {
-			return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+			return nil, err
 		}
 
-		gen_rows, err := db.Query("SELECT genre.genre FROM movie_genre JOIN genre ON movie_genre.genre_id = genre.id WHERE movie_genre.movie_id = ?", mov.ID)
-		if err != nil {
-			return nil, fmt.Errorf("movie %q: %v", mov.ID, err)
-		}
-		defer gen_rows.Close()
-
-		for gen_rows.Next() {
-			var genr string
-			if err := gen_rows.Scan(&genr); err != nil {
-				return nil, fmt.Errorf("Genre %q: %v", genr, err)
-			}
-			mov.Genres = append(mov.Genres, genr)
+		var err_gen error
+		mov.Genres, err_gen = genresByMovieId(mov.ID)
+		if err_gen != nil {
+			return nil, err_gen
 		}
 
 		movies = append(movies, mov)
 	}
-	if err := mov_rows.Err(); err != nil {
-		return nil, fmt.Errorf("moviesCriteria %q: %v", filterCriteria, err)
+	err = mov_rows.Err()
+	if err != nil {
+		return nil, err
 	}
 	return movies, nil
 }
 
 func allMovies() ([]Movie, error) {
 	movies, err := listMoviesByQuery("SELECT * FROM movie")
+	return movies, err
+}
+
+func movieById(id int) ([]Movie, error) {
+	movies, err := listMoviesByQuery("SELECT movie * FROM movie WHERE id = ?", id)
 	return movies, err
 }
 
@@ -96,16 +128,15 @@ func getMovies(c *gin.Context) {
 	fmt.Println(genre)
 	if len(genre) > 0 {
 		movies, err = moviesByGenre(genre)
+		if err != nil {
+			log.Fatal(fmt.Errorf("Movies by Genre: %v", err))
+		}
 	} else {
 		movies, err = allMovies()
+		if err != nil {
+			log.Fatal(fmt.Errorf("All Movies: %v", err))
+		}
 	}
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	// fmt.Printf("Movies found: %v\n", movies)
-
-	// c.IndentedJSON(http.StatusOK, movies)
 	// Loop over the list of albums, looking for
 	// an album whose ID value matches the parameter.
 	for _, mov := range movies {
@@ -120,6 +151,24 @@ func getMovies(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+}
+
+// postAlbums adds an album from JSON received in the request body.
+func putMovies(c *gin.Context) {
+	var newMovie Movie
+
+	// Call BindJSON to bind the received JSON to
+	// newAlbum.
+	err := c.BindJSON(&newMovie)
+	if err != nil {
+		return
+	}
+
+	fmt.Println(newMovie)
+
+	// Add the new album to the slice.
+	// albums = append(albums, newAlbum)
+	c.IndentedJSON(http.StatusCreated, newMovie)
 }
 
 func main() {
@@ -147,5 +196,6 @@ func main() {
 	router := gin.Default()
 	router.GET("/movies", getMovies)
 	router.GET("/movies/:id", getMovies)
+	router.PUT("/movies/:id", putMovies)
 	router.Run("localhost:8080")
 }
