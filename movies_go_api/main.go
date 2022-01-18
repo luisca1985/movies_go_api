@@ -282,15 +282,45 @@ func createGenresIfNotExist(newGenres []string) error {
 	return nil
 }
 
+func insertGenreInMovie(movieId int, genreId int) error {
+	query := `
+	INSERT INTO movie_genre (movie_id, genre_id)
+	VALUES (?,?)`
+	err := modifyTableByQuery(query, movieId, genreId)
+	if err != nil {
+		return fmt.Errorf("insertGenreInMovie:movie %q, genre %q -> %v", movieId, genreId, err)
+	}
+	return nil
+}
+
+func addNewGenresToMovieById(movieId int, newGenresStr []string) error {
+	Genres, err_fgen := findGenres(newGenresStr)
+	if err_fgen != nil {
+		return fmt.Errorf("addNewGenresToMovieById -> %v", err_fgen)
+	}
+	for _, genre := range Genres {
+		err_ing := insertGenreInMovie(movieId, genre.ID)
+		if err_ing != nil {
+			return fmt.Errorf("addNewGenresToMovieById -> %v", err_ing)
+		}
+	}
+	return nil
+}
+
 func changeGenresMovieById(movieId int, newGenres []string) error {
 	err_dlg := deleteGenresMovieById(movieId)
 	if err_dlg != nil {
-		return fmt.Errorf("deleteGenresMovieById -> %v", err_dlg)
+		return fmt.Errorf("changeGenresMovieById -> %v", err_dlg)
 	}
 
 	err_crg := createGenresIfNotExist(newGenres)
 	if err_crg != nil {
-		return fmt.Errorf("deleteGenresMovieById -> %v", err_crg)
+		return fmt.Errorf("changeGenresMovieById -> %v", err_crg)
+	}
+
+	err_adg := addNewGenresToMovieById(movieId, newGenres)
+	if err_adg != nil {
+		return fmt.Errorf("changeGenresMovieById -> %v", err_adg)
 	}
 
 	return nil
