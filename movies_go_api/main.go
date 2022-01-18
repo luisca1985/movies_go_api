@@ -187,6 +187,91 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
 }
 
+func removeAllGenresByMovieId(id int) error {
+
+	return nil
+}
+
+// postAlbums adds an album from JSON received in the request body.
+func putMovies(c *gin.Context) {
+	// movieId, err_mid := strconv.Atoi(c.Param("id"))
+	// if err_mid != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+	// 	return
+	// }
+
+	var newMovie Movie
+	newMovie.Rating = -1
+	newMovie.Genres = []string{""}
+
+	// Call BindJSON to bind the received JSON to
+	// newAlbum.
+	err_bind := c.BindJSON(&newMovie)
+	if err_bind != nil {
+		fmt.Println(fmt.Errorf("putMovies -> %v", err_bind))
+		return
+	}
+
+	// newRating := newMovie.Rating
+	// err_cr := changeRatingMovieById(movieId, newRating)
+	// if err_cr != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+	// 	return
+	// }
+
+	// movieId, err_mid := strconv.Atoi(c.Param("id"))
+	// if err_mid != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+	// 	return
+	// }
+
+	// oldMovie, err_old := movieById(movieId)
+	// if err_old != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_old))
+	// 	return
+	// }
+
+	// if len(oldMovie) == 0 {
+	// 	return
+	// }
+
+	// oldGenres, err_oldg := genresByMovieId(movieId)
+	// if err_oldg != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_oldg))
+	// 	return
+	// }
+
+	// for _, oldGenre := range oldGenres {
+	// 	oldInNew := false
+	// 	for _, newGenre := range newMovie.Genres {
+	// 		if oldGenre.Genre == newGenre {
+	// 			oldInNew = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !oldInNew {
+	// 		// Se borra el genero viejo
+	// 	}
+	// }
+
+	// newGenres, err_gen := findGenres(newMovie.Genres)
+	// if err_gen != nil {
+	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_gen))
+	// }
+
+	// for _, newGenre := range newMovie.Genres {
+	// }
+
+	// fmt.Println(newMovie)
+	// fmt.Println(genres)
+
+	// Add the new album to the slice.
+	// albums = append(albums, newAlbum)
+	// c.IndentedJSON(http.StatusCreated, genres)
+
+	c.IndentedJSON(http.StatusCreated, newMovie)
+}
+
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
