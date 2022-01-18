@@ -6,12 +6,14 @@ CREATE TABLE movie (
   title VARCHAR(128) NOT NULL,
   released_year INT NOT NULL,
   rating DECIMAL(2, 1) NOT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  UNIQUE (title)
 );
 CREATE TABLE genre (
   id INT AUTO_INCREMENT NOT NULL,
   genre VARCHAR(128) NOT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  UNIQUE (genre)
 );
 CREATE TABLE movie_genre (
   -- id INT AUTO_INCREMENT NOT NULL,
