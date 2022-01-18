@@ -187,20 +187,41 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
 }
 
-func updateFieldsMovies(query string, args ...interface{}) error {
+func updateAndDeleteRecords(query string, args ...interface{}) error {
 	_, err := db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("updateAndDeleteRecords -> %v", err)
+	}
+	return nil
+}
+
+func changeRatingMovieById(movieId int, newRating float64) error {
+	query := `
+	UPDATE movie 
+	SET rating = ? 
+	WHERE id = ?;`
+	err := updateAndDeleteRecords(query, newRating, movieId)
 	if err != nil {
 		return fmt.Errorf("changeRatingMovieById -> %v", err)
 	}
 	return nil
 }
 
-func changeRatingMovieById(movieId int, newRating float64) error {
-	query := "UPDATE movie SET rating = ? WHERE id = ?;"
-	err := updateFieldsMovies(query, newRating, movieId)
+func deleteGenresMovieById(movieId int) error {
+	query := `DELETE movie SET rating = ? WHERE id = ?;`
+	err := updateAndDeleteRecords(query, newRating, movieId)
 	if err != nil {
 		return fmt.Errorf("changeRatingMovieById -> %v", err)
 	}
+	return nil
+}
+
+func changeGenresMovieById(movieId int, newGenres []string) error {
+	err_dlg := deleteGenresMovieById(movieId)
+	if err_dlg != nil {
+		return fmt.Errorf("changeRatingMovieById -> %v", err_dlg)
+	}
+
 	return nil
 }
 
@@ -230,9 +251,18 @@ func putMovies(c *gin.Context) {
 
 	newRating := newMovie.Rating
 	if newRating >= 0 {
-		err_cr := changeRatingMovieById(movieId, newRating)
-		if err_cr != nil {
-			fmt.Println(fmt.Errorf("putMovies -> %v", err_cr))
+		err_chr := changeRatingMovieById(movieId, newRating)
+		if err_chr != nil {
+			fmt.Println(fmt.Errorf("putMovies -> %v", err_chr))
+			return
+		}
+	}
+
+	newGenres := newMovie.Genres
+	if len(newGenres) > 0 {
+		err_chg := changeGenresMovieById(movieId, newGenres)
+		if err_chg != nil {
+			fmt.Println(fmt.Errorf("putMovies -> %v", err_chg))
 			return
 		}
 	}
