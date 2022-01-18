@@ -127,12 +127,12 @@ func allMovies() ([]Movie, error) {
 	return movies, nil
 }
 
-func movieById(id int) ([]Movie, error) {
-	movies, err := listMoviesByQuery("SELECT movie * FROM movie WHERE id = ?", id)
+func movieById(id int) (Movie, error) {
+	movies, err := listMoviesByQuery("SELECT * FROM movie WHERE id = ?", id)
 	if err != nil {
-		return movies, fmt.Errorf("movieById -> %v", err)
+		return Movie{}, fmt.Errorf("movieById -> %v", err)
 	}
-	return movies, nil
+	return movies[0], nil
 }
 
 func moviesByGenre(genre string) ([]Movie, error) {
@@ -187,8 +187,20 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
 }
 
-func changeRatingMovieById(movieId int, newRating float64) error {
+func updateFieldsMovies(query string, args ...interface{}) error {
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("changeRatingMovieById -> %v", err)
+	}
+	return nil
+}
 
+func changeRatingMovieById(movieId int, newRating float64) error {
+	query := "UPDATE movie SET rating = ? WHERE id = ?;"
+	err := updateFieldsMovies(query, newRating, movieId)
+	if err != nil {
+		return fmt.Errorf("changeRatingMovieById -> %v", err)
+	}
 	return nil
 }
 
@@ -220,7 +232,7 @@ func putMovies(c *gin.Context) {
 	if newRating >= 0 {
 		err_cr := changeRatingMovieById(movieId, newRating)
 		if err_cr != nil {
-			fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+			fmt.Println(fmt.Errorf("putMovies -> %v", err_cr))
 			return
 		}
 	}
