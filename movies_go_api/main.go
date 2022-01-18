@@ -274,8 +274,13 @@ func putMovies(c *gin.Context) {
 	// Add the new album to the slice.
 	// albums = append(albums, newAlbum)
 	// c.IndentedJSON(http.StatusCreated, genres)
+	movie, err_gmi := movieById(movieId)
+	if err_bind != nil {
+		fmt.Println(fmt.Errorf("putMovies -> %v", err_gmi))
+		return
+	}
 
-	c.IndentedJSON(http.StatusCreated, newMovie)
+	c.IndentedJSON(http.StatusCreated, movie)
 }
 
 func main() {
