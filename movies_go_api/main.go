@@ -66,9 +66,17 @@ func allGenres() ([]Genre, error) {
 	return genres, nil
 }
 
-func findGenres(genres []Genre) ([]Genre, error) {
-	query := "SELECT * FROM genre WHERE genre IN (?" + strings.Repeat(",?", len(genres)-1) + ")"
-	genres_in_db, err := listGenresByQuery(query, genres)
+func findGenres(genres_str []string) ([]Genre, error) {
+	query := "SELECT * FROM genre WHERE genre IN (?" + strings.Repeat(",?", len(genres_str)-1) + ")"
+	genres_inter := make([]interface{}, len(genres_str))
+	for i, v := range genres_str {
+		genres_inter[i] = v
+	}
+	genres_in_db, err := listGenresByQuery(query, genres_inter...)
+	fmt.Println("Genres: ")
+	for _, genre := range genres_in_db {
+		fmt.Println(genre.Genre)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("findGenres -> %v", err)
 	}
@@ -177,24 +185,6 @@ func getMovies(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
-}
-
-// postAlbums adds an album from JSON received in the request body.
-func putMovies(c *gin.Context) {
-	var newMovie Movie
-
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
-	err := c.BindJSON(&newMovie)
-	if err != nil {
-		return
-	}
-
-	fmt.Println(newMovie)
-
-	// Add the new album to the slice.
-	// albums = append(albums, newAlbum)
-	c.IndentedJSON(http.StatusCreated, newMovie)
 }
 
 func main() {
