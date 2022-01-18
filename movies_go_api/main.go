@@ -187,18 +187,22 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
 }
 
-func removeAllGenresByMovieId(id int) error {
+func changeRatingMovieById(movieId int, newRating float64) error {
 
 	return nil
 }
 
+// func removeAllGenresByMovieId(id int) error {
+
+// 	return nil
+// }
 // postAlbums adds an album from JSON received in the request body.
 func putMovies(c *gin.Context) {
-	// movieId, err_mid := strconv.Atoi(c.Param("id"))
-	// if err_mid != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
-	// 	return
-	// }
+	movieId, err_mid := strconv.Atoi(c.Param("id"))
+	if err_mid != nil {
+		fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+		return
+	}
 
 	var newMovie Movie
 	newMovie.Rating = -1
@@ -212,12 +216,14 @@ func putMovies(c *gin.Context) {
 		return
 	}
 
-	// newRating := newMovie.Rating
-	// err_cr := changeRatingMovieById(movieId, newRating)
-	// if err_cr != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
-	// 	return
-	// }
+	newRating := newMovie.Rating
+	if newRating >= 0 {
+		err_cr := changeRatingMovieById(movieId, newRating)
+		if err_cr != nil {
+			fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
+			return
+		}
+	}
 
 	// movieId, err_mid := strconv.Atoi(c.Param("id"))
 	// if err_mid != nil {
