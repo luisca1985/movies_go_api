@@ -15,7 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// movie represents data about a record album.
+var db *sql.DB
+
+// Structs (Models) =========================
+
 type Movie struct {
 	ID           int      `json:"id"`
 	Title        string   `json:"title"`
@@ -29,7 +32,7 @@ type Genre struct {
 	Genre string `json:"genres"`
 }
 
-var db *sql.DB
+// Main Function =========================
 
 func main() {
 	// Capture connection properties.
@@ -114,8 +117,6 @@ func putMovies(c *gin.Context) {
 	newMovie.Rating = -1
 	newMovie.Genres = []string{""}
 
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
 	err_bind := c.BindJSON(&newMovie)
 	if err_bind != nil {
 		fmt.Println(fmt.Errorf("putMovies -> %v", err_bind))
@@ -190,6 +191,18 @@ func retrieveMovieById(id int) (Movie, error) {
 	FROM movie 
 	WHERE id = ?`
 	movies, err := listMoviesByQuery(query, id)
+	if err != nil {
+		return Movie{}, fmt.Errorf("movieById -> %v", err)
+	}
+	return movies[0], nil
+}
+
+func retrieveMovieByTitle(title string) (Movie, error) {
+	query := `
+	SELECT * 
+	FROM movie 
+	WHERE title = ?`
+	movies, err := listMoviesByQuery(query, title)
 	if err != nil {
 		return Movie{}, fmt.Errorf("movieById -> %v", err)
 	}
