@@ -50,7 +50,7 @@ func listGenresByQuery(query string, args ...interface{}) ([]Genre, error) {
 	return genres, nil
 }
 
-func genresByMovieId(id int) ([]Genre, error) {
+func listGenresByMovieId(id int) ([]Genre, error) {
 	query := `
 	SELECT genre.* 
 	FROM movie_genre 
@@ -61,37 +61,6 @@ func genresByMovieId(id int) ([]Genre, error) {
 		return nil, fmt.Errorf("genresByMovieId -> %v", err)
 	}
 	return genres, nil
-}
-
-func allGenres() ([]Genre, error) {
-	query := `
-	SELECT * 
-	FROM genre`
-	genres, err := listGenresByQuery(query)
-	if err != nil {
-		return nil, fmt.Errorf("allGenres -> %v", err)
-	}
-	return genres, nil
-}
-
-func findGenres(genres_str []string) ([]Genre, error) {
-	query := `
-	SELECT * 
-	FROM genre 
-	WHERE genre IN (?` + strings.Repeat(`,?`, len(genres_str)-1) + `)`
-	genres_inter := make([]interface{}, len(genres_str))
-	for i, v := range genres_str {
-		genres_inter[i] = v
-	}
-	genres_in_db, err := listGenresByQuery(query, genres_inter...)
-	fmt.Println("Genres: ")
-	for _, genre := range genres_in_db {
-		fmt.Println(genre.Genre)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("findGenres -> %v", err)
-	}
-	return genres_in_db, err
 }
 
 // albumsByArtist queries for albums that have the specified artist name.
@@ -113,7 +82,7 @@ func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
 			return nil, fmt.Errorf("listMoviesByQuery: Movie %q Scan -> %v", mov.Title, err_scan)
 		}
 
-		genres, err_gen := genresByMovieId(mov.ID)
+		genres, err_gen := listGenresByMovieId(mov.ID)
 		for _, genre := range genres {
 			mov.Genres = append(mov.Genres, genre.Genre)
 		}
@@ -130,7 +99,46 @@ func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
 	return movies, nil
 }
 
-func allMovies() ([]Movie, error) {
+func modifyTableByQuery(query string, args ...interface{}) error {
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("updateAndDeleteRecords -> %v", err)
+	}
+	return nil
+}
+
+func listAllGenres() ([]Genre, error) {
+	query := `
+	SELECT * 
+	FROM genre`
+	genres, err := listGenresByQuery(query)
+	if err != nil {
+		return nil, fmt.Errorf("allGenres -> %v", err)
+	}
+	return genres, nil
+}
+
+func listGenresInStringList(genres_str []string) ([]Genre, error) {
+	query := `
+	SELECT * 
+	FROM genre 
+	WHERE genre IN (?` + strings.Repeat(`,?`, len(genres_str)-1) + `)`
+	genres_inter := make([]interface{}, len(genres_str))
+	for i, v := range genres_str {
+		genres_inter[i] = v
+	}
+	genres_in_db, err := listGenresByQuery(query, genres_inter...)
+	fmt.Println("Genres: ")
+	for _, genre := range genres_in_db {
+		fmt.Println(genre.Genre)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("findGenres -> %v", err)
+	}
+	return genres_in_db, err
+}
+
+func listAllMovies() ([]Movie, error) {
 	query := `
 	SELECT * 
 	FROM movie`
@@ -141,75 +149,33 @@ func allMovies() ([]Movie, error) {
 	return movies, nil
 }
 
-func movieById(id int) (Movie, error) {
-	movies, err := listMoviesByQuery("SELECT * FROM movie WHERE id = ?", id)
+func retrieveMovieById(id int) (Movie, error) {
+	query := `
+	SELECT * 
+	FROM movie 
+	WHERE id = ?`
+	movies, err := listMoviesByQuery(query, id)
 	if err != nil {
 		return Movie{}, fmt.Errorf("movieById -> %v", err)
 	}
 	return movies[0], nil
 }
 
-func moviesByGenre(genre string) ([]Movie, error) {
-	movies, err := listMoviesByQuery("SELECT movie.* FROM movie JOIN movie_genre ON movie.id = movie_genre.movie_id JOIN genre ON movie_genre.genre_id = genre.id WHERE genre.genre = ?", genre)
+func listMoviesByGenre(genre string) ([]Movie, error) {
+	query := `
+	SELECT movie.* 
+	FROM movie 
+	JOIN movie_genre ON movie.id = movie_genre.movie_id 
+	JOIN genre ON movie_genre.genre_id = genre.id 
+	WHERE genre.genre = ?`
+	movies, err := listMoviesByQuery(query, genre)
 	if err != nil {
 		return movies, fmt.Errorf("moviesByGenre -> %v", err)
 	}
 	return movies, nil
 }
 
-// getAlbumByID locates the album whose ID value matches the id
-// parameter sent by the client, then returns that album as a response.
-func getMovies(c *gin.Context) {
-	var movies []Movie
-	var movies_filtered []Movie
-	var err error
-
-	id, id_err := strconv.Atoi(c.Param("id"))
-	title := c.Query("title")
-	genre := c.Query("genre")
-	released_after, ra_err := strconv.Atoi(c.Query("released_after"))
-	released_before, rb_err := strconv.Atoi(c.Query("released_before"))
-	rating_higher_than, rh_err := strconv.ParseFloat(c.Query("rating_higher_than"), 64)
-	rating_lower_than, rl_err := strconv.ParseFloat(c.Query("rating_lower_than"), 64)
-
-	fmt.Println("Genre: ")
-	fmt.Println(genre)
-	if len(genre) > 0 {
-		movies, err = moviesByGenre(genre)
-		if err != nil {
-			log.Fatal(fmt.Errorf("getMovies -> %v", err))
-		}
-	} else {
-		movies, err = allMovies()
-		if err != nil {
-			log.Fatal(fmt.Errorf("getMovies -> %v", err))
-		}
-	}
-	// Loop over the list of albums, looking for
-	// an album whose ID value matches the parameter.
-	for _, mov := range movies {
-		if (mov.ID == id || id_err != nil) && (mov.Title == title || len(title) == 0) && (mov.ReleasedYear >= released_after || ra_err != nil) && (mov.ReleasedYear <= released_before || rb_err != nil) && (mov.Rating >= rating_higher_than || rh_err != nil) && (mov.Rating >= rating_lower_than || rl_err != nil) {
-			fmt.Printf("Movie: %v\n", mov)
-			movies_filtered = append(movies_filtered, mov)
-		}
-	}
-	if len(movies_filtered) > 0 {
-		c.IndentedJSON(http.StatusOK, movies_filtered)
-		return
-	}
-
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
-}
-
-func modifyTableByQuery(query string, args ...interface{}) error {
-	_, err := db.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("updateAndDeleteRecords -> %v", err)
-	}
-	return nil
-}
-
-func changeRatingMovieById(movieId int, newRating float64) error {
+func updateMovieRatingById(movieId int, newRating float64) error {
 	query := `
 	UPDATE movie 
 	SET rating = ? 
@@ -221,7 +187,7 @@ func changeRatingMovieById(movieId int, newRating float64) error {
 	return nil
 }
 
-func deleteGenresMovieById(movieId int) error {
+func destroyGenresMovieById(movieId int) error {
 	query := `
 	DELETE FROM movie_genre 
 	WHERE movie_id = ?;`
@@ -232,9 +198,32 @@ func deleteGenresMovieById(movieId int) error {
 	return nil
 }
 
+func createGenre(genre string) error {
+	query := `
+	INSERT INTO genre (genre)
+	VALUES (?)`
+	err := modifyTableByQuery(query, genre)
+	if err != nil {
+		return fmt.Errorf("insertGenre: genre %q -> %v", genre, err)
+	}
+
+	return nil
+}
+
+func createGenreInMovie(movieId int, genreId int) error {
+	query := `
+	INSERT INTO movie_genre (movie_id, genre_id)
+	VALUES (?,?)`
+	err := modifyTableByQuery(query, movieId, genreId)
+	if err != nil {
+		return fmt.Errorf("insertGenreInMovie:movie %q, genre %q -> %v", movieId, genreId, err)
+	}
+	return nil
+}
+
 func getNotExistGenres(newGenres_str []string) ([]string, error) {
 	var notExistGenres []string
-	existGenres, err := allGenres()
+	existGenres, err := listAllGenres()
 	if err != nil {
 		return nil, fmt.Errorf("getNotExistGenres -> %v", err)
 	}
@@ -255,18 +244,6 @@ func getNotExistGenres(newGenres_str []string) ([]string, error) {
 	return notExistGenres, nil
 }
 
-func insertGenre(genre string) error {
-	query := `
-	INSERT INTO genre (genre)
-	VALUES (?)`
-	err := modifyTableByQuery(query, genre)
-	if err != nil {
-		return fmt.Errorf("insertGenre: genre %q -> %v", genre, err)
-	}
-
-	return nil
-}
-
 func createGenresIfNotExist(newGenres []string) error {
 	notExistGenres, err_neg := getNotExistGenres(newGenres)
 	if err_neg != nil {
@@ -274,7 +251,7 @@ func createGenresIfNotExist(newGenres []string) error {
 	}
 
 	for _, genre := range notExistGenres {
-		insertGenre(genre)
+		createGenre(genre)
 		if err_neg != nil {
 			return fmt.Errorf("createGenresIfNotExist -> %v", err_neg)
 		}
@@ -282,24 +259,13 @@ func createGenresIfNotExist(newGenres []string) error {
 	return nil
 }
 
-func insertGenreInMovie(movieId int, genreId int) error {
-	query := `
-	INSERT INTO movie_genre (movie_id, genre_id)
-	VALUES (?,?)`
-	err := modifyTableByQuery(query, movieId, genreId)
-	if err != nil {
-		return fmt.Errorf("insertGenreInMovie:movie %q, genre %q -> %v", movieId, genreId, err)
-	}
-	return nil
-}
-
-func addNewGenresToMovieById(movieId int, newGenresStr []string) error {
-	Genres, err_fgen := findGenres(newGenresStr)
+func createMovieGenresByMovieId(movieId int, newGenresStr []string) error {
+	Genres, err_fgen := listGenresInStringList(newGenresStr)
 	if err_fgen != nil {
 		return fmt.Errorf("addNewGenresToMovieById -> %v", err_fgen)
 	}
 	for _, genre := range Genres {
-		err_ing := insertGenreInMovie(movieId, genre.ID)
+		err_ing := createGenreInMovie(movieId, genre.ID)
 		if err_ing != nil {
 			return fmt.Errorf("addNewGenresToMovieById -> %v", err_ing)
 		}
@@ -307,8 +273,8 @@ func addNewGenresToMovieById(movieId int, newGenresStr []string) error {
 	return nil
 }
 
-func changeGenresMovieById(movieId int, newGenres []string) error {
-	err_dlg := deleteGenresMovieById(movieId)
+func updateMovieGenresByMovieId(movieId int, newGenres []string) error {
+	err_dlg := destroyGenresMovieById(movieId)
 	if err_dlg != nil {
 		return fmt.Errorf("changeGenresMovieById -> %v", err_dlg)
 	}
@@ -318,7 +284,7 @@ func changeGenresMovieById(movieId int, newGenres []string) error {
 		return fmt.Errorf("changeGenresMovieById -> %v", err_crg)
 	}
 
-	err_adg := addNewGenresToMovieById(movieId, newGenres)
+	err_adg := createMovieGenresByMovieId(movieId, newGenres)
 	if err_adg != nil {
 		return fmt.Errorf("changeGenresMovieById -> %v", err_adg)
 	}
@@ -326,11 +292,48 @@ func changeGenresMovieById(movieId int, newGenres []string) error {
 	return nil
 }
 
-// func removeAllGenresByMovieId(id int) error {
+func getMovies(c *gin.Context) {
+	var movies []Movie
+	var movies_filtered []Movie
+	var err error
 
-// 	return nil
-// }
-// postAlbums adds an album from JSON received in the request body.
+	id, id_err := strconv.Atoi(c.Param("id"))
+	title := c.Query("title")
+	genre := c.Query("genre")
+	released_after, ra_err := strconv.Atoi(c.Query("released_after"))
+	released_before, rb_err := strconv.Atoi(c.Query("released_before"))
+	rating_higher_than, rh_err := strconv.ParseFloat(c.Query("rating_higher_than"), 64)
+	rating_lower_than, rl_err := strconv.ParseFloat(c.Query("rating_lower_than"), 64)
+
+	fmt.Println("Genre: ")
+	fmt.Println(genre)
+	if len(genre) > 0 {
+		movies, err = listMoviesByGenre(genre)
+		if err != nil {
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
+		}
+	} else {
+		movies, err = listAllMovies()
+		if err != nil {
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
+		}
+	}
+	// Loop over the list of albums, looking for
+	// an album whose ID value matches the parameter.
+	for _, mov := range movies {
+		if (mov.ID == id || id_err != nil) && (mov.Title == title || len(title) == 0) && (mov.ReleasedYear >= released_after || ra_err != nil) && (mov.ReleasedYear <= released_before || rb_err != nil) && (mov.Rating >= rating_higher_than || rh_err != nil) && (mov.Rating >= rating_lower_than || rl_err != nil) {
+			fmt.Printf("Movie: %v\n", mov)
+			movies_filtered = append(movies_filtered, mov)
+		}
+	}
+	if len(movies_filtered) > 0 {
+		c.IndentedJSON(http.StatusOK, movies_filtered)
+		return
+	}
+
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+}
+
 func putMovies(c *gin.Context) {
 	movieId, err_mid := strconv.Atoi(c.Param("id"))
 	if err_mid != nil {
@@ -352,7 +355,7 @@ func putMovies(c *gin.Context) {
 
 	newRating := newMovie.Rating
 	if newRating >= 0 {
-		err_chr := changeRatingMovieById(movieId, newRating)
+		err_chr := updateMovieRatingById(movieId, newRating)
 		if err_chr != nil {
 			fmt.Println(fmt.Errorf("putMovies -> %v", err_chr))
 			return
@@ -361,63 +364,14 @@ func putMovies(c *gin.Context) {
 
 	newGenres := newMovie.Genres
 	if len(newGenres) > 0 {
-		err_chg := changeGenresMovieById(movieId, newGenres)
+		err_chg := updateMovieGenresByMovieId(movieId, newGenres)
 		if err_chg != nil {
 			fmt.Println(fmt.Errorf("putMovies -> %v", err_chg))
 			return
 		}
 	}
 
-	// movieId, err_mid := strconv.Atoi(c.Param("id"))
-	// if err_mid != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
-	// 	return
-	// }
-
-	// oldMovie, err_old := movieById(movieId)
-	// if err_old != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_old))
-	// 	return
-	// }
-
-	// if len(oldMovie) == 0 {
-	// 	return
-	// }
-
-	// oldGenres, err_oldg := genresByMovieId(movieId)
-	// if err_oldg != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_oldg))
-	// 	return
-	// }
-
-	// for _, oldGenre := range oldGenres {
-	// 	oldInNew := false
-	// 	for _, newGenre := range newMovie.Genres {
-	// 		if oldGenre.Genre == newGenre {
-	// 			oldInNew = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !oldInNew {
-	// 		// Se borra el genero viejo
-	// 	}
-	// }
-
-	// newGenres, err_gen := findGenres(newMovie.Genres)
-	// if err_gen != nil {
-	// 	fmt.Println(fmt.Errorf("putMovies -> %v", err_gen))
-	// }
-
-	// for _, newGenre := range newMovie.Genres {
-	// }
-
-	// fmt.Println(newMovie)
-	// fmt.Println(genres)
-
-	// Add the new album to the slice.
-	// albums = append(albums, newAlbum)
-	// c.IndentedJSON(http.StatusCreated, genres)
-	movie, err_gmi := movieById(movieId)
+	movie, err_gmi := retrieveMovieById(movieId)
 	if err_bind != nil {
 		fmt.Println(fmt.Errorf("putMovies -> %v", err_gmi))
 		return
