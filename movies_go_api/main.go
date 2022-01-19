@@ -78,8 +78,6 @@ func getMovies(c *gin.Context) {
 	rating_higher_than, rh_err := strconv.ParseFloat(c.Query("rating_higher_than"), 64)
 	rating_lower_than, rl_err := strconv.ParseFloat(c.Query("rating_lower_than"), 64)
 
-	fmt.Println("Genre: ")
-	fmt.Println(genre)
 	if len(genre) > 0 {
 		movies, err = listMoviesByGenre(genre)
 		if err != nil {
@@ -98,12 +96,13 @@ func getMovies(c *gin.Context) {
 			movies_filtered = append(movies_filtered, mov)
 		}
 	}
+
 	if len(movies_filtered) > 0 {
 		c.IndentedJSON(http.StatusOK, movies_filtered)
 		return
 	}
 
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movies not found"})
 }
 
 func putMovies(c *gin.Context) {
