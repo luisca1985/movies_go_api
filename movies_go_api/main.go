@@ -138,6 +138,29 @@ func listGenresInStringList(genres_str []string) ([]Genre, error) {
 	return genres_in_db, err
 }
 
+func listNotExistGenresInStrinList(newGenres_str []string) ([]string, error) {
+	var notExistGenres []string
+	existGenres, err := listAllGenres()
+	if err != nil {
+		return nil, fmt.Errorf("getNotExistGenres -> %v", err)
+	}
+
+	for _, newGenre := range newGenres_str {
+		exist := false
+		for _, existGenre := range existGenres {
+			if newGenre == existGenre.Genre {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			notExistGenres = append(notExistGenres, newGenre)
+		}
+	}
+
+	return notExistGenres, nil
+}
+
 func listAllMovies() ([]Movie, error) {
 	query := `
 	SELECT * 
@@ -147,18 +170,6 @@ func listAllMovies() ([]Movie, error) {
 		return nil, fmt.Errorf("allMovies -> %v", err)
 	}
 	return movies, nil
-}
-
-func retrieveMovieById(id int) (Movie, error) {
-	query := `
-	SELECT * 
-	FROM movie 
-	WHERE id = ?`
-	movies, err := listMoviesByQuery(query, id)
-	if err != nil {
-		return Movie{}, fmt.Errorf("movieById -> %v", err)
-	}
-	return movies[0], nil
 }
 
 func listMoviesByGenre(genre string) ([]Movie, error) {
@@ -175,16 +186,16 @@ func listMoviesByGenre(genre string) ([]Movie, error) {
 	return movies, nil
 }
 
-func updateMovieRatingById(movieId int, newRating float64) error {
+func retrieveMovieById(id int) (Movie, error) {
 	query := `
-	UPDATE movie 
-	SET rating = ? 
-	WHERE id = ?;`
-	err := modifyTableByQuery(query, newRating, movieId)
+	SELECT * 
+	FROM movie 
+	WHERE id = ?`
+	movies, err := listMoviesByQuery(query, id)
 	if err != nil {
-		return fmt.Errorf("changeRatingMovieById -> %v", err)
+		return Movie{}, fmt.Errorf("movieById -> %v", err)
 	}
-	return nil
+	return movies[0], nil
 }
 
 func destroyGenresMovieById(movieId int) error {
@@ -221,31 +232,8 @@ func createGenreInMovie(movieId int, genreId int) error {
 	return nil
 }
 
-func getNotExistGenres(newGenres_str []string) ([]string, error) {
-	var notExistGenres []string
-	existGenres, err := listAllGenres()
-	if err != nil {
-		return nil, fmt.Errorf("getNotExistGenres -> %v", err)
-	}
-
-	for _, newGenre := range newGenres_str {
-		exist := false
-		for _, existGenre := range existGenres {
-			if newGenre == existGenre.Genre {
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			notExistGenres = append(notExistGenres, newGenre)
-		}
-	}
-
-	return notExistGenres, nil
-}
-
 func createGenresIfNotExist(newGenres []string) error {
-	notExistGenres, err_neg := getNotExistGenres(newGenres)
+	notExistGenres, err_neg := listNotExistGenresInStrinList(newGenres)
 	if err_neg != nil {
 		return fmt.Errorf("createGenresIfNotExist -> %v", err_neg)
 	}
@@ -269,6 +257,18 @@ func createMovieGenresByMovieId(movieId int, newGenresStr []string) error {
 		if err_ing != nil {
 			return fmt.Errorf("addNewGenresToMovieById -> %v", err_ing)
 		}
+	}
+	return nil
+}
+
+func updateMovieRatingByMovieId(movieId int, newRating float64) error {
+	query := `
+	UPDATE movie 
+	SET rating = ? 
+	WHERE id = ?;`
+	err := modifyTableByQuery(query, newRating, movieId)
+	if err != nil {
+		return fmt.Errorf("changeRatingMovieById -> %v", err)
 	}
 	return nil
 }
@@ -355,7 +355,7 @@ func putMovies(c *gin.Context) {
 
 	newRating := newMovie.Rating
 	if newRating >= 0 {
-		err_chr := updateMovieRatingById(movieId, newRating)
+		err_chr := updateMovieRatingByMovieId(movieId, newRating)
 		if err_chr != nil {
 			fmt.Println(fmt.Errorf("putMovies -> %v", err_chr))
 			return
