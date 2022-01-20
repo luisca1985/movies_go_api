@@ -1,6 +1,6 @@
 # Assignment
 
-Develop APIs that allows consumers to access the movies data. Most of the queries will be against local database but you can use imdb npm package (https://godoc.org/github.com/eefret/gomdb ) to query for movies when data isn’t available in the local database and store it for future reference. Movie object in database will have following properties as well as movie object in response of the apis:
+Develop APIs that allows consumers to access the movies data. Most of the queries will be against local database but you can use imdb npm package (https://godoc.org/github.com/eefret/gomdb) to query for movies when data isn’t available in the local database and store it for future reference. Movie object in database will have following properties as well as movie object in response of the apis:
 
 - title
 - released year
@@ -9,7 +9,6 @@ Develop APIs that allows consumers to access the movies data. Most of the querie
 - genres (array of strings)
 
 You will write API for following operations:
-
 - Find movie by title by exact value that’s passed in the API. Notes: If there is no match in local database, use imdb-api package for the search. If that returns result(s), then store the result in database and return first value.
 - API that allows updates to genres and ratings of the movie.
 
@@ -27,7 +26,30 @@ github and send us the link. Also share postman collection with all the API urls
 validate. Thanks!
 
 # Movies API
+## Database
+### Create a database
+```sql
+mysql> create database movies_db;
+```
+### Change to the database
+```sql
+mysql> use movies_db;
+```
+### Create an album table with values
+```sql
+mysql> source /movies_go_api/create-tables.sql
+```
 
+### User and Password
+From the command prompt, set the `DBUSER` and `DBPASS` environment variables for use by the Go program.
+
+#### On Linux or Mac
+```bash
+$ export DBUSER=username
+```
+```bash
+$ export DBPASS=password
+```
 ## API Options
 ### Search by id
 ```http
