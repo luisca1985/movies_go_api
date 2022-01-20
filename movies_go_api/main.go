@@ -24,6 +24,7 @@ var db *sql.DB
 type Movie struct {
 	ID           int      `json:"id"`
 	Title        string   `json:"title"`
+	LongTitle    string   `json:"long_title"`
 	ReleasedYear int      `json:"released_year"`
 	Rating       float64  `json:"rating"`
 	Genres       []string `json:"genres"`
@@ -69,6 +70,7 @@ func main() {
 
 func getMovies(c *gin.Context) {
 	var movies []Movie
+	movie := Movie{ID: -1}
 	var movies_filtered []Movie
 	var err error
 
@@ -81,24 +83,21 @@ func getMovies(c *gin.Context) {
 	rating_lower_than, rl_err := strconv.ParseFloat(c.Query("rating_lower_than"), 64)
 
 	if id_err == nil {
-		movie, err_rmi := retrieveMovieById(id)
+		var err_rmi error
+		movie, err_rmi = retrieveMovieById(id)
 		if err_rmi != nil {
 			log.Fatal(fmt.Errorf("getMovies -> %v", err_rmi))
 			return
 		}
-		c.IndentedJSON(http.StatusOK, movie)
-		return
-
 	} else if len(title) > 0 {
-		movieCreated, err := createMovieWithTitleIfNotExist(title)
-		if err != nil {
-			log.Fatal(fmt.Errorf("getMovies -> %v", err))
+		var err_cmt error
+		movie, err_cmt = createMovieWithTitleIfNotExist(title)
+		if err_cmt != nil {
+			log.Fatal(fmt.Errorf("getMovies -> %v", err_cmt))
 		}
-		if len(movieCreated.Title) > 0 {
-			fmt.Printf("Movie %v get from http://omdbapi.com/", movieCreated.Title)
+		if movie.ID != -1 {
+			fmt.Printf("Movie %v get from http://omdbapi.com/", movie.Title)
 		}
-		c.IndentedJSON(http.StatusOK, movieCreated)
-		return
 	} else if len(genre) > 0 {
 		movies, err = listMoviesByGenre(genre)
 		if err != nil {
@@ -118,6 +117,10 @@ func getMovies(c *gin.Context) {
 		}
 	}
 
+	if movie.ID != -1 {
+		c.IndentedJSON(http.StatusOK, movie)
+		return
+	}
 	if len(movies_filtered) > 0 {
 		c.IndentedJSON(http.StatusOK, movies_filtered)
 		return
@@ -212,45 +215,47 @@ func retrieveMovieById(id int) (Movie, error) {
 	WHERE id = ?`
 	movies, err := listMoviesByQuery(query, id)
 	if err != nil {
-		return Movie{}, fmt.Errorf("movieById -> %v", err)
+		return Movie{ID: -1}, fmt.Errorf("movieById -> %v", err)
 	}
 	if len(movies) > 0 {
 		return movies[0], nil
 	}
-	return Movie{}, nil
+	return Movie{ID: -1}, nil
 }
 
 func retrieveMovieByTitle(title string) (Movie, error) {
 	query := `
 	SELECT * 
 	FROM movie 
-	WHERE title = ?`
-	movies, err := listMoviesByQuery(query, title)
+	WHERE title = ? OR long_title = ?`
+	movies, err := listMoviesByQuery(query, title, title)
 	if err != nil {
-		return Movie{}, fmt.Errorf("retrieveMovieByTitle -> %v", err)
+		return Movie{ID: -1}, fmt.Errorf("retrieveMovieByTitle -> %v", err)
 	}
 	if len(movies) > 0 {
 		return movies[0], nil
 	}
-	return Movie{}, nil
+	return Movie{ID: -1}, nil
 }
 
 func retriveMovieFromGomdbByTitle(title string) (Movie, error) {
 	var gomdbMovie Movie
 	api := gomdb.Init("4733c4c1")
-	query := &gomdb.QueryData{Title: "Macbeth"}
+	query := &gomdb.QueryData{Title: title}
 	movieFromGomdb, err := api.MovieByTitle(query)
 	if err != nil {
-		return Movie{}, fmt.Errorf("retriveMovieFromGomdbByTitle -> %v", err)
+		fmt.Println(fmt.Errorf("Error retrieving movie from Golang Omdb API -> %v", err))
+		return Movie{ID: -1}, nil
 	}
 
 	var err_ryr error
-	gomdbMovie.Title = movieFromGomdb.Title
+	gomdbMovie.Title = title
+	gomdbMovie.LongTitle = movieFromGomdb.Title
 	gomdbMovie.Rating = -1
 	gomdbMovie.Genres = strings.Split(strings.ReplaceAll(movieFromGomdb.Genre, " ", ""), ",")
 	gomdbMovie.ReleasedYear, err_ryr = strconv.Atoi(movieFromGomdb.Year)
 	if err_ryr != nil {
-		return Movie{}, fmt.Errorf("retriveMovieFromGomdbByTitle -> %v", err_ryr)
+		return Movie{ID: -1}, fmt.Errorf("retriveMovieFromGomdbByTitle -> %v", err_ryr)
 	}
 	return gomdbMovie, nil
 }
@@ -273,38 +278,38 @@ func destroyGenresMovieById(movieId int) error {
 func createMovieWithTitleIfNotExist(title string) (Movie, error) {
 	localMovie, err_loc := retrieveMovieByTitle(title)
 	if err_loc != nil {
-		return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", title, err_loc)
+		return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", title, err_loc)
 	}
 
 	if len(localMovie.Title) == 0 {
 		gomdbMovie, err_rem := retriveMovieFromGomdbByTitle(title)
 		if err_rem != nil {
-			return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", title, err_rem)
+			return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", title, err_rem)
 		}
-		if len(gomdbMovie.Title) > 0 {
+		if gomdbMovie.ID != -1 {
 			err_crm := createMovie(gomdbMovie)
 			if err_crm != nil {
-				return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", title, err_crm)
+				return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist: movie title %q -> %v", gomdbMovie.Title, err_crm)
 			}
 
 			newMovieWithoutGenres, err_new := retrieveMovieByTitle(gomdbMovie.Title)
 			if err_new != nil {
-				return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist: new movie title %q -> %v", title, err_new)
+				return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist: new movie title %q -> %v", title, err_new)
 			}
 
 			err_chg := updateMovieGenresByMovieId(newMovieWithoutGenres.ID, gomdbMovie.Genres)
 			if err_chg != nil {
-				return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist -> %v", err_chg)
+				return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist -> %v", err_chg)
 			}
 
 			newMovieWithGenres, err_new := retrieveMovieById(newMovieWithoutGenres.ID)
 			if err_new != nil {
-				return Movie{}, fmt.Errorf("createMovieWithTitleIfNotExist: new movie title %q -> %v", title, err_new)
+				return Movie{ID: -1}, fmt.Errorf("createMovieWithTitleIfNotExist: new movie title %q -> %v", title, err_new)
 			}
 
 			return newMovieWithGenres, nil
 		}
-		return Movie{}, nil
+		return Movie{ID: -1}, nil
 	}
 
 	return localMovie, nil
@@ -312,11 +317,11 @@ func createMovieWithTitleIfNotExist(title string) (Movie, error) {
 
 func createMovie(movie Movie) error {
 	query := `
-	INSERT INTO movie (title, released_year, rating)
-	VALUES (?,?,?)`
-	err := modifyTableByQuery(query, movie.Title, movie.ReleasedYear, movie.Rating)
+	INSERT INTO movie (title, long_title, released_year, rating)
+	VALUES (?,?,?,?)`
+	err := modifyTableByQuery(query, movie.Title, movie.LongTitle, movie.ReleasedYear, movie.Rating)
 	if err != nil {
-		return fmt.Errorf("createMovie: title %q -> %v", movie.Title, err)
+		fmt.Println(fmt.Errorf("createMovie: title %q -> %v", movie.Title, err))
 	}
 
 	return nil
@@ -490,7 +495,7 @@ func listMoviesByQuery(query string, args ...interface{}) ([]Movie, error) {
 
 	for mov_rows.Next() {
 		var mov Movie
-		err_scan := mov_rows.Scan(&mov.ID, &mov.Title, &mov.ReleasedYear, &mov.Rating)
+		err_scan := mov_rows.Scan(&mov.ID, &mov.Title, &mov.LongTitle, &mov.ReleasedYear, &mov.Rating)
 		if err_scan != nil {
 			return nil, fmt.Errorf("listMoviesByQuery: Movie %q Scan -> %v", mov.Title, err_scan)
 		}
