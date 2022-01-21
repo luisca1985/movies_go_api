@@ -43,7 +43,7 @@ func main() {
 		User:   os.Getenv("DBUSER"),
 		Passwd: os.Getenv("DBPASS"),
 		Net:    "tcp",
-		Addr:   "127.0.0.1:3306",
+		Addr:   "db:3306",
 		DBName: "movies_db",
 	}
 	// Get a database handle.
