@@ -14,6 +14,7 @@ services:
       - 80:8080
     env_file:
     - ./sql/.envs/.mysql
+    - ./app/.envs/.gomdb
     depends_on:
       - db
   
