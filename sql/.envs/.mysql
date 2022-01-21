@@ -1,0 +1,6 @@
+# Mysql
+# ------------------------------------------------------------------------------
+MYSQL_ROOT_PASSWORD=S3cret
+MYSQL_PASSWORD=An0thrS3crt
+MYSQL_USER=movies_user
+MYSQL_DATABASE=movies_db
