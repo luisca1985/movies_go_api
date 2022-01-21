@@ -40,11 +40,11 @@ type Genre struct {
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
-		User:   os.Getenv("DBUSER"),
-		Passwd: os.Getenv("DBPASS"),
+		User:   os.Getenv("MYSQL_USER"),
+		Passwd: os.Getenv("MYSQL_PASSWORD"),
 		Net:    "tcp",
 		Addr:   "db:3306",
-		DBName: "movies_db",
+		DBName: os.Getenv("MYSQL_DATABASE"),
 	}
 	// Get a database handle.
 	var err error
@@ -63,7 +63,7 @@ func main() {
 	router.GET("/movies", getMovies)
 	router.GET("/movies/:id", getMovies)
 	router.PUT("/movies/:id", putMovies)
-	router.Run("localhost:8080")
+	router.Run("0.0.0.0:8080")
 }
 
 // HTTP Functions =========================
