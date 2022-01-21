@@ -60,9 +60,10 @@ func main() {
 	fmt.Println("Connected!")
 
 	router := gin.Default()
+	router.GET("/movies/title/:title", getMovieByTitle)
+	router.GET("/movies/:id", getMovieById)
+	router.PUT("/movies/:id", putMovieById)
 	router.GET("/movies", getMovies)
-	router.GET("/movies/:id", getMovies)
-	router.PUT("/movies/:id", putMovies)
 	router.Run("0.0.0.0:8080")
 }
 
@@ -70,35 +71,16 @@ func main() {
 
 func getMovies(c *gin.Context) {
 	var movies []Movie
-	movie := Movie{ID: -1}
 	var movies_filtered []Movie
 	var err error
 
-	id, id_err := strconv.Atoi(c.Param("id"))
-	title := c.Query("title")
 	genre := c.Query("genre")
 	released_after, ra_err := strconv.Atoi(c.Query("released_after"))
 	released_before, rb_err := strconv.Atoi(c.Query("released_before"))
 	rating_higher_than, rh_err := strconv.ParseFloat(c.Query("rating_higher_than"), 64)
 	rating_lower_than, rl_err := strconv.ParseFloat(c.Query("rating_lower_than"), 64)
 
-	if id_err == nil {
-		var err_rmi error
-		movie, err_rmi = retrieveMovieById(id)
-		if err_rmi != nil {
-			log.Fatal(fmt.Errorf("getMovies -> %v", err_rmi))
-			return
-		}
-	} else if len(title) > 0 {
-		var err_cmt error
-		movie, err_cmt = createMovieWithTitleIfNotExist(title)
-		if err_cmt != nil {
-			log.Fatal(fmt.Errorf("getMovies -> %v", err_cmt))
-		}
-		if movie.ID != -1 {
-			fmt.Printf("Movie %v get from http://omdbapi.com/", movie.Title)
-		}
-	} else if len(genre) > 0 {
+	if len(genre) > 0 {
 		movies, err = listMoviesByGenre(genre)
 		if err != nil {
 			log.Fatal(fmt.Errorf("getMovies -> %v", err))
@@ -111,16 +93,11 @@ func getMovies(c *gin.Context) {
 	}
 
 	for _, mov := range movies {
-		if (mov.ID == id || id_err != nil) && (mov.Title == title || len(title) == 0) && (mov.ReleasedYear >= released_after || ra_err != nil) && (mov.ReleasedYear <= released_before || rb_err != nil) && (mov.Rating >= rating_higher_than || rh_err != nil) && (mov.Rating >= rating_lower_than || rl_err != nil) {
-			fmt.Printf("Movie: %v\n", mov)
+		if (mov.ReleasedYear >= released_after || ra_err != nil) && (mov.ReleasedYear <= released_before || rb_err != nil) && (mov.Rating >= rating_higher_than || rh_err != nil) && (mov.Rating >= rating_lower_than || rl_err != nil) {
 			movies_filtered = append(movies_filtered, mov)
 		}
 	}
 
-	if movie.ID != -1 {
-		c.IndentedJSON(http.StatusOK, movie)
-		return
-	}
 	if len(movies_filtered) > 0 {
 		c.IndentedJSON(http.StatusOK, movies_filtered)
 		return
@@ -129,7 +106,47 @@ func getMovies(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movies not found"})
 }
 
-func putMovies(c *gin.Context) {
+func getMovieById(c *gin.Context) {
+	movie := Movie{ID: -1}
+	var err error
+	id, id_err := strconv.Atoi(c.Param("id"))
+	if id_err == nil {
+		movie, err = retrieveMovieById(id)
+		if err != nil {
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
+			return
+		}
+	}
+	if movie.ID != -1 {
+		c.IndentedJSON(http.StatusOK, movie)
+		return
+	}
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+
+}
+
+func getMovieByTitle(c *gin.Context) {
+	movie := Movie{ID: -1}
+	title := c.Query("title")
+	var err error
+	if len(title) > 0 {
+		movie, err = createMovieWithTitleIfNotExist(title)
+		if err != nil {
+			log.Fatal(fmt.Errorf("getMovies -> %v", err))
+		}
+		if movie.ID != -1 {
+			fmt.Printf("Movie %v get from http://omdbapi.com/", movie.Title)
+		}
+	}
+	if movie.ID != -1 {
+		c.IndentedJSON(http.StatusOK, movie)
+		return
+	}
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+
+}
+
+func putMovieById(c *gin.Context) {
 	movieId, err_mid := strconv.Atoi(c.Param("id"))
 	if err_mid != nil {
 		fmt.Println(fmt.Errorf("putMovies -> %v", err_mid))
@@ -240,11 +257,11 @@ func retrieveMovieByTitle(title string) (Movie, error) {
 
 func retriveMovieFromGomdbByTitle(title string) (Movie, error) {
 	var gomdbMovie Movie
-	api := gomdb.Init("4733c4c1")
+	api := gomdb.Init(os.Getenv("OMDB_API_KEY"))
 	query := &gomdb.QueryData{Title: title}
 	movieFromGomdb, err := api.MovieByTitle(query)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error retrieving movie from Golang Omdb API -> %v", err))
+		fmt.Println(fmt.Errorf("error retrieving movie from Golang Omdb API -> %v", err))
 		return Movie{ID: -1}, nil
 	}
 
