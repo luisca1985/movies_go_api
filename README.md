@@ -22,13 +22,6 @@ These will be performed only against local database only:
 3. Search movies with rating higher or lower than passed in value.
 4. Search movies with passed in genres value
 
-You can write 4 different APIs or write single API for all variations above.
-
-You are free to make some decisions about the functionality on your own, there are no set
-ground rules. After successfully completing the code execution, please upload the code on
-github and send us the link. Also share postman collection with all the API urls so its easy to
-validate. Thanks!
-
 ## Prerequisites
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - [Docker](https://docs.docker.com/get-docker/)
