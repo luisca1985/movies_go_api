@@ -13,10 +13,10 @@ Movie object in database has the following properties as well as movie object in
 
 ### Update APIs
 - Find movie by title by exact value that’s passed in the API. Notes: If there is no match in local database, imdb-api package is used for the search. If that returns result(s), then we store the result in database and return first value.
-- Also we have an API that allows updates to genres and ratings of the movie.
+- Also we have an API that allows to update genres and ratings of the movie.
 
 #### Search APIs 
-These will be performed only against local database only:
+These will be performed only against local database:
 1. Search by Id
 2. Search movies released in a particular year or given range
 3. Search movies with rating higher or lower than passed in value.
