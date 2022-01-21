@@ -127,7 +127,8 @@ func getMovieById(c *gin.Context) {
 
 func getMovieByTitle(c *gin.Context) {
 	movie := Movie{ID: -1}
-	title := c.Query("title")
+	title := c.Param("title")
+	fmt.Printf(`title: %v`, title)
 	var err error
 	if len(title) > 0 {
 		movie, err = createMovieWithTitleIfNotExist(title)
