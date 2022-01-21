@@ -1,4 +1,0 @@
-# Golang Omdb API
-# ------------------------------------------------------------------------------
-# http://omdbapi.com/apikey.aspx
-OMDB_API_KEY=<INCLUDE_API_KEY>
